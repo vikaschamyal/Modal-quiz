@@ -1,79 +1,87 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import quizData from "./data/quizData";
-import Modal from "./Modal";
 
 const QuizApp = () => {
-  const [current, setCurrent] = useState(0);
-  const [selected, setSelected] = useState(null);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [showResult, setShowResult] = useState(false);
+  const [selected, setSelected] = useState(null);
+  const [previousScores, setPreviousScores] = useState([]);
 
-  const handleOptionClick = (option) => setSelected(option);
+  useEffect(() => {
+    const storedScores = JSON.parse(localStorage.getItem("quiz-scores")) || [];
+    setPreviousScores(storedScores);
+  }, []);
 
-  const handleNext = () => {
-    if (selected === quizData[current].answer) {
+  const handleOptionClick = (option) => {
+    setSelected(option);
+    if (option === quizData[currentIndex].answer) {
       setScore(score + 1);
-    }
-    if (current + 1 < quizData.length) {
-      setCurrent(current + 1);
-      setSelected(null);
-    } else {
-      setShowResult(true);
     }
   };
 
-  const restart = () => {
-    setCurrent(0);
+  const handleNext = () => {
     setSelected(null);
+    if (currentIndex + 1 < quizData.length) {
+      setCurrentIndex(currentIndex + 1);
+    } else {
+      setShowResult(true);
+      const newScores = [...previousScores, score + (selected === quizData[currentIndex].answer ? 1 : 0)];
+      localStorage.setItem("quiz-scores", JSON.stringify(newScores));
+      setPreviousScores(newScores);
+    }
+  };
+
+  const handleRestart = () => {
     setScore(0);
+    setCurrentIndex(0);
+    setSelected(null);
     setShowResult(false);
   };
 
-  const q = quizData[current];
-
-  return (
-    <div className="max-w-xl mx-auto p-6 bg-white rounded-xl shadow-lg mt-10">
-      <h2 className="text-2xl font-bold mb-4 text-blue-700">React Quiz</h2>
-      <p className="mb-4 text-lg font-medium">
-        <span className="text-gray-600">Q{current + 1}:</span> {q.question}
-      </p>
-
-      <ul className="space-y-2 mb-6">
-        {q.options.map((opt) => (
-          <li
-            key={opt}
-            onClick={() => handleOptionClick(opt)}
-            className={`p-3 border rounded-md cursor-pointer transition-all ${
-              selected === opt
-                ? "bg-blue-600 text-white"
-                : "hover:bg-gray-100"
-            }`}
-          >
-            {opt}
-          </li>
-        ))}
-      </ul>
-
-      <button
-        onClick={handleNext}
-        disabled={!selected}
-        className="bg-green-600 text-white px-5 py-2 rounded hover:bg-green-700 disabled:opacity-50"
-      >
-        {current + 1 === quizData.length ? "Submit" : "Next"}
-      </button>
-
-      <Modal isOpen={showResult} onClose={() => setShowResult(false)}>
-        <h2 className="text-xl font-semibold mb-4">Your Score</h2>
-        <p className="text-lg mb-4">
-          You got <strong>{score}</strong> out of {quizData.length}
-        </p>
-        <button
-          onClick={restart}
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-        >
+  if (showResult) {
+    return (
+      <div className="bg-white p-6 rounded shadow-md w-full max-w-xl text-center">
+        <h2 className="text-2xl font-bold mb-4">Quiz Completed!</h2>
+        <p className="text-lg mb-2">Your Score: {score}/{quizData.length}</p>
+        <h3 className="font-semibold mb-2">Previous Scores:</h3>
+        <ul className="text-sm mb-4">
+          {previousScores.map((s, i) => (
+            <li key={i}>Attempt {i + 1}: {s}</li>
+          ))}
+        </ul>
+        <button onClick={handleRestart} className="bg-blue-600 text-white px-4 py-2 rounded">
           Restart Quiz
         </button>
-      </Modal>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white p-6 rounded shadow-md w-full max-w-xl">
+      <h2 className="text-xl font-bold mb-4">Question {currentIndex + 1}</h2>
+      <p className="mb-4">{quizData[currentIndex].question}</p>
+      <div className="space-y-2">
+        {quizData[currentIndex].options.map((option, idx) => (
+          <button
+            key={idx}
+            onClick={() => handleOptionClick(option)}
+            className={`w-full text-left px-4 py-2 border rounded ${
+              selected === option ? (option === quizData[currentIndex].answer ? "bg-green-200" : "bg-red-200") : "bg-gray-100"
+            }`}
+            disabled={selected}
+          >
+            {option}
+          </button>
+        ))}
+      </div>
+      <div className="mt-4 text-right">
+        {selected && (
+          <button onClick={handleNext} className="bg-blue-600 text-white px-4 py-2 rounded">
+            {currentIndex + 1 < quizData.length ? "Next" : "Finish"}
+          </button>
+        )}
+      </div>
     </div>
   );
 };
